@@ -1,0 +1,227 @@
+openapi: 3.0.3
+info:
+  title: File Converter API
+  description: |
+    A REST API for converting files between different formats using CloudConvert.
+    
+    Supported formats: PDF, DOCX, XLSX, CSV, PPTX
+    
+    ## Features
+    - File format conversion between office documents
+    - Secure file processing via CloudConvert
+    - Automatic file cleanup after conversion
+    - Support for multiple file formats
+    
+    ## Authentication
+    No authentication required for public endpoints.
+    
+    ## Rate Limits
+    Rate limits depend on your CloudConvert subscription plan.
+    
+  version: 1.0.0
+  contact:
+    name: File Converter Support
+    url: https://github.com/yourusername/ezconverter
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://your-app.vercel.app/api
+    description: Production server
+  - url: http://localhost:3000/api
+    description: Development server
+
+paths:
+  /convert:
+    post:
+      summary: Convert a file to another format
+      description: |
+        Upload a file and convert it to a different format.
+        
+        **Supported Conversions:**
+        - PDF ↔ DOCX, XLSX, CSV (limited support from PDF)
+        - DOCX ↔ PDF, XLSX, CSV, PPTX
+        - XLSX ↔ PDF, DOCX, CSV, PPTX  
+        - CSV ↔ PDF, DOCX, XLSX, PPTX
+        - PPTX ↔ PDF, DOCX, XLSX, CSV
+        
+        **File Size Limit:** 10MB
+        
+      tags:
+        - File Conversion
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - outputFormat
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The file to be converted
+                  example: document.docx
+                outputFormat:
+                  type: string
+                  enum: [pdf, docx, xlsx, csv, pptx]
+                  description: The desired output format
+                  example: pdf
+            examples:
+              docx_to_pdf:
+                summary: Convert DOCX to PDF
+                value:
+                  outputFormat: pdf
+              excel_to_csv:
+                summary: Convert Excel to CSV
+                value:
+                  outputFormat: csv
+              csv_to_excel:
+                summary: Convert CSV to Excel
+                value:
+                  outputFormat: xlsx
+      responses:
+        '200':
+          description: File converted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates successful conversion
+                    example: true
+                  downloadUrl:
+                    type: string
+                    format: uri
+                    description: Direct download link to the converted file
+                    example: "https://storage.cloudconvert.com/tasks/550e8400-e29b-41d4-a716-446655440000/test.pdf"
+                  originalFilename:
+                    type: string
+                    description: Original filename of the uploaded file
+                    example: "document.docx"
+                  outputFormat:
+                    type: string
+                    description: Format of the converted file
+                    example: "pdf"
+              examples:
+                successful_conversion:
+                  summary: Successful file conversion
+                  value:
+                    success: true
+                    downloadUrl: "https://storage.cloudconvert.com/tasks/550e8400-e29b-41d4-a716-446655440000/converted_file.pdf"
+                    originalFilename: "my-document.docx"
+                    outputFormat: "pdf"
+        '400':
+          description: Bad Request - Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                no_file:
+                  summary: No file provided
+                  value:
+                    error: "No valid file provided or file has no name"
+                invalid_format:
+                  summary: Invalid output format
+                  value:
+                    error: "Invalid output format. Supported formats: pdf, docx, xlsx, csv, pptx"
+                file_too_large:
+                  summary: File too large
+                  value:
+                    error: "File too large. Maximum size is 10MB"
+                same_format:
+                  summary: Same input and output format
+                  value:
+                    error: "Input and output formats are the same. No conversion needed."
+                unsupported_format:
+                  summary: Unsupported file format
+                  value:
+                    error: "Unsupported file format. Supported formats: pdf, docx, xlsx, csv, pptx"
+                empty_file:
+                  summary: Empty file
+                  value:
+                    error: "File is empty"
+        '500':
+          description: Internal Server Error - Conversion failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                conversion_failed:
+                  summary: CloudConvert conversion failed
+                  value:
+                    error: "Conversion failed: Task convert-file failed"
+                credits_exhausted:
+                  summary: CloudConvert credits exhausted
+                  value:
+                    error: "CloudConvert credits exhausted. Please check your account."
+                unsupported_conversion:
+                  summary: Conversion type not supported
+                  value:
+                    error: "Conversion from PDF to PPTX is not supported by CloudConvert. Please try a different format combination."
+                ocr_failed:
+                  summary: OCR processing failed
+                  value:
+                    error: "OCR processing failed. The PDF might be too complex or contain unsupported elements."
+
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message describing what went wrong
+          example: "File too large (max 10MB)"
+    
+    FileFormat:
+      type: string
+      enum: [pdf, docx, xlsx, csv, pptx]
+      description: Supported file formats
+      example: pdf
+    
+    ConversionRequest:
+      type: object
+      required:
+        - file
+        - outputFormat
+      properties:
+        file:
+          type: string
+          format: binary
+          description: The file to convert
+        outputFormat:
+          $ref: '#/components/schemas/FileFormat'
+    
+    ConversionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the conversion was successful
+        downloadUrl:
+          type: string
+          format: uri
+          description: URL to download the converted file
+        originalFilename:
+          type: string
+          description: Name of the original uploaded file
+        outputFormat:
+          $ref: '#/components/schemas/FileFormat'
+
+tags:
+  - name: File Conversion
+    description: Endpoints for converting files between different formats
+
+externalDocs:
+  description: GitHub Repository
+  url: https://github.com/yourusername/ezconverter
